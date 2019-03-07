@@ -1,0 +1,197 @@
+<!HTML>
+<html ng-app="foldersApp">
+    <head>
+        <title>Folders</title>
+    </head>
+    <body ng-controller="FoldersController">
+        <style>
+            body
+            {
+                background-color: teal;
+                font-family: "Georgia"
+            }
+            table
+            {
+                float: left;
+                background-color: lightblue;
+                margin: 64px;
+                padding: 32px;
+            }
+            table tbody tr td
+            {
+                cursor: pointer;
+            }
+            .stats
+            {
+                float: left;
+                background-color: lightblue;
+                margin: 64px;
+                padding: 32px;
+            }
+            .loading
+            {
+                width: 256px;
+                height: 64px;
+                background-color: aquamarine;
+                position: fixed;
+                top: 50%;
+                left: 256px;
+                right: 256px;
+            }
+            .animate-enter {
+               -webkit-transition: 1s linear all; /* Chrome */
+               transition: 1s linear all;
+               opacity: 0;
+            }
+            .animate-enter.animate-enter-active {
+               opacity: 1;
+            }
+        </style>
+        <script src="angular.min.js"></script>
+        <script>
+            var folders = require('./folders.js');
+            var filesize = require("file-size");
+            
+            
+            
+            var foldersApp = angular.module("foldersApp", []);
+            
+            foldersApp.filter('orderObjectBy', function() {
+              return function(items, field, reverse) {
+                var filtered = [];
+                angular.forEach(items, function(item) {
+                  filtered.push(item);
+                });
+                filtered.sort(function (a, b) {
+                  return (a[field] > b[field] ? 1 : -1);
+                });
+                if(reverse) filtered.reverse();
+                return filtered;
+              };
+            });
+            
+            foldersApp.filter('orderObjectByInverted', function() {
+              return function(items, field, reverse) {
+                var filtered = [];
+                for (key in items) {
+                  var it = items[key];
+                  it.name = key;
+                  filtered.push(it);
+                };
+                // return filtered; // remove me later
+                filtered.sort(function (a, b) {
+                  return (a[field] < b[field] ? 1 : -1);
+                });
+                if(reverse) filtered.reverse();
+                return filtered;
+              };
+            });
+            
+            foldersApp.controller("FoldersController", function($scope){
+                
+                $scope.chdir = function(ndir)
+                {
+                    $scope.prevDir = $scope.currentDirMap;
+                    //$scope.currentDirMap = {dirs: {}, files: {}, size: -1, mediaStats: {videos: 0, music: 0, pictures: 0, documents: 0, program: 0, unknown: 0, archives: 0, trash: 0}};
+                    $scope.currentDirMap = $scope.currentDirMap.dirs[ndir];
+                }
+                
+                $scope.dirup = function()
+                {
+                    if ($scope.currentDirMap.parentDirMap)
+                    {
+                        //$scope.currentDirMap = {dirs: {}, files: {}, size: -1, mediaStats: {videos: 0, music: 0, pictures: 0, documents: 0, program: 0, unknown: 0, archives: 0, trash: 0}};
+                        $scope.currentDirMap = $scope.currentDirMap.parentDirMap;
+                    }
+                }
+                
+                $scope.humanBytes = function(nBytes)
+                {
+                    return filesize(nBytes).human();
+                }
+                
+                $scope.loading = true;
+                
+                folders.analyzeDir("c:", function(size, dirMap){
+                // $scope.folders = [];
+                // alert(JSON.stringify(dirMap));
+                
+                
+                $scope.$apply(function(){
+                    $scope.dirMap = dirMap;
+                    $scope.currentDirMap = dirMap;
+                    $scope.loading = false;
+                });
+                
+
+            }, function(a, b){});
+                
+                
+                $scope.folders = [
+                    /*{
+                        name: "folder1",
+                        size: 5
+                    },
+                    {
+                        name: "folder2",
+                        size: 10
+                    },
+                    {
+                        name: "folder3",
+                        size: 77
+                    },
+                    {
+                        name: "folderAAA",
+                        size: 1010
+                    }*/
+                ];
+                $scope.files = [
+                    {
+                        name: "plik.txt",
+                        size: 128,
+                        humanSize: "128 bytes"
+                    },
+                    {
+                        name: "plik.js",
+                        size: 543,
+                        humanSize: "5 KiB"
+                    }
+                ];
+                
+                $scope.stats = [
+                    {
+                        name: "Videos",
+                        humanSize: "15 GiB"
+                    }
+                ]
+            });
+        </script>
+        <table>
+            <tbody>
+                <tr>
+                    <td ng-click='dirup()'>GO UP</td>
+                </tr>
+                <tr ng-repeat="(dir, data) in currentDirMap.dirs | orderObjectByInverted:'size'" ng-animate="{enter: 'animate-enter', leave: 'animate-leave'}">
+                    <td ng-click="chdir(data.name)">{{ data.name }}</td>
+                    <td>{{ data.humanSize }}</td>
+                </tr>
+            </tbody>
+        </table>
+        <table>
+            <tbody>
+                <tr ng-repeat="(file, data) in currentDirMap.files | orderObjectByInverted:'size'" ng-animate="{enter: 'animate-enter', leave: 'animate-leave'}">
+                    <td>{{ data.name }}</td>
+                    <td>{{ data.humanSize }}</td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="stats">
+            <p ng-repeat="(name, stat) in currentDirMap.mediaStats">
+                <span>{{ name }}</span><span>:&nbsp;</span><span>{{ humanBytes(stat) }}</span>
+            </p>
+        </div>
+        <div class="loading" ng-show="loading">
+            <p>analyzing directory, please wait...</p>
+        </div>
+    </body>
+</html>
